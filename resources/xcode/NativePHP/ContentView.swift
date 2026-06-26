@@ -607,6 +607,12 @@ struct WebView: UIViewRepresentable {
             forMainFrameOnly: true
         )
         contentController.addUserScript(script)
+
+        // Let the web app drive the system status/navigation bar appearance so it
+        // follows the in-app theme (white icons on dark, dark icons on light),
+        // independent of the device's OS dark-mode setting. The web posts
+        // { theme: "dark" | "light" } whenever it resolves its theme.
+        contentController.add(StatusBarHandler(), name: "statusBarStyle")
     }
 
     func addSwipeGestureSupport(webView: WKWebView, context: Context) {
@@ -626,6 +632,28 @@ class ConsoleLogger: NSObject, WKScriptMessageHandler {
            let logMessage = body["message"] as? String {
             print()
             print("JS \(type): \(logMessage)")
+        }
+    }
+}
+
+/// Applies the in-app theme to the window so iOS renders the status bar (and
+/// other system chrome) with matching content colour: a dark app theme makes the
+/// trait dark, which resolves the default status bar style to light/white icons.
+/// Driven from the web via window.webkit.messageHandlers.statusBarStyle.
+class StatusBarHandler: NSObject, WKScriptMessageHandler {
+    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        guard let body = message.body as? [String: Any],
+              let theme = body["theme"] as? String else { return }
+
+        let style: UIUserInterfaceStyle = (theme == "dark") ? .dark : .light
+
+        DispatchQueue.main.async {
+            let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+            for scene in scenes {
+                for window in scene.windows {
+                    window.overrideUserInterfaceStyle = style
+                }
+            }
         }
     }
 }

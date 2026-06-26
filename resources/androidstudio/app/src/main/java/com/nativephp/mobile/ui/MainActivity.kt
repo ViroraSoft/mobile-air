@@ -67,8 +67,9 @@ class MainActivity : FragmentActivity(), WebViewProvider {
     private var pendingInsets: Insets? = null
     private var showSplash by mutableStateOf(true)
 
-    // Status bar style configuration - replaced during build
-    private val statusBarStyle = "REPLACE_STATUS_BAR_STYLE"
+    // Status bar style configuration - replaced during build. Mutable so the web
+    // app can re-drive it at runtime to follow the in-app theme (see AndroidBridge.setStatusBarTheme).
+    private var statusBarStyle = "REPLACE_STATUS_BAR_STYLE"
 
     companion object {
         // Static instance holder for accessing MainActivity from other activities
@@ -1047,6 +1048,19 @@ class MainActivity : FragmentActivity(), WebViewProvider {
                     NativeUIState.drawerState?.open()
                     Log.d("AndroidBridge", "✅ Drawer opened!")
                 }
+            }
+        }
+
+        @android.webkit.JavascriptInterface
+        fun setStatusBarTheme(theme: String) {
+            // App-theme driven: a dark in-app theme needs light (white) status/nav
+            // bar icons; a light theme needs dark icons. Re-applies configureStatusBar()
+            // on the UI thread, independent of the device's OS dark-mode setting.
+            val style = if (theme == "dark") "light" else "dark"
+            Log.d("AndroidBridge", "🎨 setStatusBarTheme($theme) -> $style")
+            runOnUiThread {
+                statusBarStyle = style
+                configureStatusBar()
             }
         }
     }
