@@ -172,10 +172,13 @@ class LaravelEnvironment(private val context: Context) {
 
             setupEnvironment()
 
-            // Only run artisan commands when files were actually extracted/changed
+            // Only run artisan commands when files were actually extracted/changed.
+            // Serialized under extractionLock: runArtisanCommand() calls into the
+            // embedded PHP's TSRM startup, which isn't safe to enter concurrently
+            // from MainActivity's init thread and a WorkManager background worker.
             if (didExtract) {
                 Log.d(TAG, "📦 Running post-extraction artisan commands...")
-                runBaseArtisanCommands()
+                extractionLock.withLock { runBaseArtisanCommands() }
             } else {
                 Log.d(TAG, "⚡ Skipping artisan commands — no extraction needed")
             }
@@ -951,7 +954,7 @@ openssl.cafile="${context.filesDir.absolutePath}/$CACERT_FILE"
             setupEnvironment()
             if (didExtract) {
                 Log.d(TAG, "📦 Running post-extraction artisan commands (background path)...")
-                runBaseArtisanCommands()
+                extractionLock.withLock { runBaseArtisanCommands() }
             }
             Log.d(TAG, "Background environment initialized")
         } catch (e: Exception) {
