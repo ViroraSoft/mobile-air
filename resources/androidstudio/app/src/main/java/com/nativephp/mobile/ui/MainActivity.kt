@@ -270,7 +270,9 @@ class MainActivity : FragmentActivity(), WebViewProvider {
             }
 
             Handler(Looper.getMainLooper()).post {
-                onReady()
+                if (!isFinishing && !isDestroyed) {
+                    onReady()
+                }
             }
         }.start()
     }
