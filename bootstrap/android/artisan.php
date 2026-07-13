@@ -21,6 +21,32 @@ $output = new StreamOutput($stdout);
 
 $kernel = $app->make(Kernel::class);
 
+// NativePHP install-time bootstrap: run the post-extraction command batch under a
+// single PHP embed cycle. native_run_artisan_command() does php_embed_init +
+// php_embed_shutdown per call, and repeated TSRM startup crashes on some low-end
+// devices (e.g. Galaxy A32). Collapse the four commands into one interpreter boot.
+if (($argv[1] ?? null) === 'native:bootstrap') {
+    $commands = [
+        ['optimize:clear', []],
+        ['storage:unlink', []],
+        ['storage:link', []],
+        ['migrate', ['--force' => true]],
+    ];
+
+    $status = 0;
+    foreach ($commands as [$name, $params]) {
+        try {
+            $kernel->call($name, $params, $output);
+        } catch (\Throwable $e) {
+            fwrite($stdout, "\n[native:bootstrap] {$name} failed: {$e->getMessage()}\n");
+            $status = 1;
+        }
+    }
+
+    $kernel->terminate(new ArgvInput, $status);
+    exit($status);
+}
+
 $status = $kernel->handle(
     new ArgvInput,
     $output

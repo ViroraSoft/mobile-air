@@ -746,10 +746,12 @@ class LaravelEnvironment(private val context: Context) {
         }
 
         File(appStorageDir, "persisted_data/storage/app/public")
-        phpBridge.runArtisanCommand("optimize:clear")
-        phpBridge.runArtisanCommand("storage:unlink")
-        phpBridge.runArtisanCommand("storage:link")
-        phpBridge.runArtisanCommand("migrate --force")
+
+        // Run the four post-extraction commands under a single PHP embed cycle.
+        // Each runArtisanCommand() does php_embed_init/shutdown, and repeated TSRM
+        // startup crashes on some low-end devices (Galaxy A32). native:bootstrap is
+        // intercepted in bootstrap/android/artisan.php and runs them under one boot.
+        phpBridge.runArtisanCommand("native:bootstrap")
     }
 
     private fun setupDirectories() {
