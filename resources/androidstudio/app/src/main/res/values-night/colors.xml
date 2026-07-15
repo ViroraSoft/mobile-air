@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Matches the iOS SplashView dark-mode canvas (see 578ec72) so the
+         native splash/window background doesn't flash a light color in
+         dark mode. -->
+    <color name="virora_canvas">#FF18120F</color>
+</resources>

@@ -117,8 +117,15 @@ class MainActivity : FragmentActivity(), WebViewProvider {
             // background. The native splash overlay fades out right after loadUrl()
             // is called, before the page has actually painted, so without this the
             // white surface flashes through in that gap. Match the brand canvas
-            // color so the transition is seamless instead of a white flash.
-            setBackgroundColor(android.graphics.Color.parseColor("#FFF6EFE4"))
+            // color (light or dark variant, same colors as values/values-night
+            // colors.xml) so the transition is seamless instead of a light/white
+            // flash — including in dark mode.
+            val isSystemDarkMode = (resources.configuration.uiMode and
+                Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+            setBackgroundColor(
+                if (isSystemDarkMode) android.graphics.Color.parseColor("#FF18120F")
+                else android.graphics.Color.parseColor("#FFF6EFE4")
+            )
         }
 
         LaravelCookieStore.init(applicationContext)
