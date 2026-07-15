@@ -886,18 +886,22 @@ openssl.cafile="${context.filesDir.absolutePath}/$CACERT_FILE"
         }
     }
 
+    /**
+     * Laravel's own APP_KEY format is 32 random bytes, base64-encoded with a
+     * "base64:" prefix (what `key:generate --show` produces). Generating it
+     * locally with SecureRandom avoids a full extra php_embed_init/shutdown
+     * cycle purely to run one artisan command on cold start / fresh install —
+     * mirrors the iOS side, which derives its key without booting PHP at all.
+     */
     private fun generateAndSaveAppKey(file: File): String {
-        val result = phpBridge.runArtisanCommand("key:generate --show")
-        var generatedKey = result.trim()
-
-        if (!generatedKey.startsWith("base64:")) {
-            generatedKey = "base64:3a3I14QgnAhKUHROy1bn6A/UpTeELNI2flsl+Ud0bF4="
-        }
+        val keyBytes = ByteArray(32)
+        java.security.SecureRandom().nextBytes(keyBytes)
+        val generatedKey = "base64:" + android.util.Base64.encodeToString(keyBytes, android.util.Base64.NO_WRAP)
 
         file.parentFile?.mkdirs()
         file.writeText(generatedKey)
 
-        Log.d(TAG, "🔐 Generated and stored new APP_KEY: $generatedKey")
+        Log.d(TAG, "🔐 Generated and stored new APP_KEY locally (no PHP boot)")
         return generatedKey
     }
 

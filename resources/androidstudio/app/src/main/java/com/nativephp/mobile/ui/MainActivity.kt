@@ -113,6 +113,12 @@ class MainActivity : FragmentActivity(), WebViewProvider {
                 ViewGroup.LayoutParams.MATCH_PARENT
             )
             settings.mediaPlaybackRequiresUserGesture = false
+            // WebView's own surface defaults to white regardless of the window
+            // background. The native splash overlay fades out right after loadUrl()
+            // is called, before the page has actually painted, so without this the
+            // white surface flashes through in that gap. Match the brand canvas
+            // color so the transition is seamless instead of a white flash.
+            setBackgroundColor(android.graphics.Color.parseColor("#FFF6EFE4"))
         }
 
         LaravelCookieStore.init(applicationContext)
