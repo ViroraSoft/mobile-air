@@ -4,9 +4,6 @@
           <item name="colorPrimary">@android:color/white</item>
           <item name="colorPrimaryVariant">@android:color/white</item>
           <item name="colorOnPrimary">@android:color/black</item>
-          <!-- Brand canvas (dark variant) as the window background removes the
-               default light flash on cold start before the splash/WebView paints. -->
-          <item name="android:windowBackground">@color/virora_canvas</item>
           <item name="android:windowDrawsSystemBarBackgrounds">true</item>
           <item name="android:statusBarColor">@android:color/transparent</item>
           <item name="android:navigationBarColor">@android:color/transparent</item>

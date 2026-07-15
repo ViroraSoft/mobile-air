@@ -100,6 +100,10 @@ trait InstallsAndroid
                     <item name="colorOnPrimary">{$onPrimary}</item>
                     <item name="colorAccent">{$primary}</item>
                     <item name="android:colorAccent">{$primary}</item>
+                    <!-- @color/virora_canvas resolves to its values-night variant
+                         automatically, so cold start shows the brand canvas instead
+                         of a default light/white window before anything paints. -->
+                    <item name="android:windowBackground">@color/virora_canvas</item>
                     <item name="android:windowDrawsSystemBarBackgrounds">true</item>
                     <item name="android:statusBarColor">@android:color/transparent</item>
                     <item name="android:navigationBarColor">@android:color/transparent</item>
