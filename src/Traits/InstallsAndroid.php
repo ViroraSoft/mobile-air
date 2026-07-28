@@ -85,13 +85,7 @@ trait InstallsAndroid
      * itself white-backed. Anything else leaves the artwork sitting on a visible
      * white plate inside the launcher's mask.
      *
-     * Emitted as a bitmap rather than the template's <shape>. Verified on an
-     * emulator: with a size-less drawable (<shape> or <color>) the launcher
-     * lays the background out smaller than the 108dp canvas, so it stops short
-     * of the mask and the foreground spills over the edge onto the wallpaper.
-     * A bitmap carries an intrinsic size and fills the layer. The bug is
-     * invisible with the stock white background, which matches the launcher's
-     * own plate for legacy icons.
+     * Emitted as a ColorDrawable, which is what the layer is: a flat fill.
      */
     private function writeLauncherBackground(): void
     {
@@ -100,24 +94,24 @@ trait InstallsAndroid
         );
 
         $resDir = base_path('nativephp/android/app/src/main/res');
-        $png = "{$resDir}/drawable-nodpi/ic_launcher_background.png";
-        $templateXml = "{$resDir}/drawable/ic_launcher_background.xml";
+        $path = "{$resDir}/drawable/ic_launcher_background.xml";
+        $strayPng = "{$resDir}/drawable-nodpi/ic_launcher_background.png";
 
-        File::ensureDirectoryExists(dirname($png));
+        File::ensureDirectoryExists(dirname($path));
 
-        $this->components->task('Applying launcher background', function () use ($png, $templateXml, $color) {
-            // Two resources of the same name in the same type collide at build time.
-            if (File::exists($templateXml)) {
-                File::delete($templateXml);
+        $this->components->task('Applying launcher background', function () use ($path, $strayPng, $color) {
+            // Left behind by the bitmap form this replaced; two resources of the
+            // same name and type collide at build time.
+            if (File::exists($strayPng)) {
+                File::delete($strayPng);
             }
 
-            [$a, $r, $g, $b] = sscanf($color, '#%2x%2x%2x%2x');
+            File::put($path, <<<XML
+                <?xml version="1.0" encoding="utf-8"?>
+                <color xmlns:android="http://schemas.android.com/apk/res/android"
+                       android:color="{$color}"/>
 
-            $image = imagecreatetruecolor(432, 432);
-            imagesavealpha($image, true);
-            imagefilledrectangle($image, 0, 0, 432, 432, imagecolorallocatealpha($image, $r, $g, $b, 127 - (int) round($a * 127 / 255)));
-            imagepng($image, $png, 9);
-            imagedestroy($image);
+                XML);
 
             return true;
         });
