@@ -156,9 +156,10 @@ trait InstallsAppIcon
     /**
      * Draw a transparent foreground artwork onto an adaptive-icon canvas.
      *
-     * The launcher only guarantees the centre 72dp of the 108dp canvas is
-     * visible, so the artwork is measured by its opaque bounds and scaled to
-     * sit inside that safe zone rather than trusting however it was framed.
+     * The artwork is measured by its opaque bounds and scaled to fit, rather
+     * than trusting however it was framed. The target is the 66dp circle
+     * Android documents as safe for key content — not the full 72dp safe zone,
+     * whose corners a circular mask cuts off.
      */
     private function renderAdaptiveForeground(string $src, string $dst, int $size): void
     {
@@ -173,8 +174,8 @@ trait InstallsAppIcon
         $contentWidth = $right - $left + 1;
         $contentHeight = $bottom - $top + 1;
 
-        // 72dp safe zone within the 108dp canvas.
-        $safe = $size * (72 / 108);
+        // 66dp safe-content circle within the 108dp canvas.
+        $safe = $size * (66 / 108);
         $scale = $safe / max($contentWidth, $contentHeight);
 
         $drawWidth = (int) round($contentWidth * $scale);

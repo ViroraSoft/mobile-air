@@ -84,6 +84,11 @@ trait InstallsAndroid
      * The stock template is white, which only disappears behind an icon that is
      * itself white-backed. Anything else leaves the artwork sitting on a visible
      * white plate inside the launcher's mask.
+     *
+     * Emitted as a ColorDrawable rather than the template's <shape>: a shape has
+     * no intrinsic size, and AdaptiveIconDrawable then lays it out smaller than
+     * the 108dp canvas, so the layer stops short of the mask and the foreground
+     * spills over the edge onto the wallpaper. A <color> always fills its bounds.
      */
     private function writeLauncherBackground(): void
     {
@@ -98,10 +103,8 @@ trait InstallsAndroid
         $this->components->task('Applying launcher background', function () use ($path, $color) {
             File::put($path, <<<XML
                 <?xml version="1.0" encoding="utf-8"?>
-                <shape xmlns:android="http://schemas.android.com/apk/res/android"
-                       android:shape="rectangle">
-                    <solid android:color="{$color}"/>
-                </shape>
+                <color xmlns:android="http://schemas.android.com/apk/res/android"
+                       android:color="{$color}"/>
 
                 XML);
 
