@@ -239,37 +239,18 @@ return [
         | Launcher Icon Background
         |--------------------------------------------------------------------------
         |
-        | The background layer of the Android adaptive icon. The launcher masks
-        | the background and foreground together into its own shape, so this
-        | should match the icon artwork's own background — otherwise the artwork
-        | sits on a visible plate of this color.
+        | The background layer of the Android adaptive icon.
         |
-        | Pair it with public/icon-foreground.png (the logo alone, on
-        | transparency) for a seamless result. Without that file the foreground
-        | is derived from public/icon.png and carries that icon's background.
+        | installAndroidIcon() builds the foreground by scaling public/icon.png
+        | onto a transparent canvas, background and all, and the launcher masks
+        | the two layers together. Leave this at the template's white and any
+        | icon that is not itself white-backed ends up as a visible plate inside
+        | the mask. Set it to the icon's own background colour instead.
         |
         | Hex string: #RRGGBB or #AARRGGBB.
         |
         */
         'launcher_background' => env('NATIVEPHP_ANDROID_LAUNCHER_BACKGROUND', '#FFFFFF'),
-
-        /*
-        |--------------------------------------------------------------------------
-        | Launcher Icon Artwork Size
-        |--------------------------------------------------------------------------
-        |
-        | How wide the artwork in public/icon-foreground.png is drawn, in dp,
-        | within the 108dp adaptive icon canvas. It is fitted by its own radius,
-        | so this is the diameter of the circle it ends up occupying.
-        |
-        | 52dp puts it at roughly 72% of the launcher's mask, which is where
-        | platform icons sit. 66dp is the documented maximum for content that
-        | must not be clipped; going that far is safe but looks oversized.
-        |
-        | Ignored when public/icon-foreground.png is absent.
-        |
-        */
-        'launcher_foreground_size' => env('NATIVEPHP_ANDROID_LAUNCHER_FOREGROUND_SIZE', 52),
 
         /*
         |--------------------------------------------------------------------------
