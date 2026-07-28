@@ -157,12 +157,15 @@ trait InstallsAppIcon
      * Draw a transparent foreground artwork onto an adaptive-icon canvas.
      *
      * The artwork is measured and scaled to fit rather than trusting however it
-     * was framed. What it has to fit is the 66dp circle Android documents as
-     * safe for key content, so the artwork is measured by the radius of its
-     * furthest opaque pixel — not by its bounding box. Fitting the box instead
-     * only works for artwork whose extremities sit on the axes; anything
-     * reaching into its own corners (a rosette, a diagonal wordmark) then
-     * overflows the mask by up to the box's half-diagonal.
+     * was framed, and it is measured by the radius of its furthest opaque pixel
+     * rather than by its bounding box. Fitting the box only works for artwork
+     * whose extremities sit on the axes; anything reaching into its own corners
+     * (a rosette, a diagonal wordmark) then overflows the mask by up to the
+     * box's half-diagonal.
+     *
+     * The target diameter is a visual choice, not the 66dp safe-content circle:
+     * filling that circle is allowed but reads oversized next to platform icons,
+     * whose glyphs sit around 70-75% of the mask.
      */
     private function renderAdaptiveForeground(string $src, string $dst, int $size): void
     {
@@ -177,8 +180,10 @@ trait InstallsAppIcon
         $contentWidth = $right - $left + 1;
         $contentHeight = $bottom - $top + 1;
 
-        // Radius of the 66dp safe-content circle within the 108dp canvas.
-        $safeRadius = $size * (33 / 108);
+        $diameter = (float) (config('nativephp.android.launcher_foreground_size') ?: 52);
+        $diameter = max(1.0, min(66.0, $diameter));
+
+        $safeRadius = $size * ($diameter / 2 / 108);
         $scale = $radius > 0 ? $safeRadius / $radius : 1.0;
 
         $drawWidth = (int) round($contentWidth * $scale);

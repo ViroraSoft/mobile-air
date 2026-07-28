@@ -255,6 +255,24 @@ return [
 
         /*
         |--------------------------------------------------------------------------
+        | Launcher Icon Artwork Size
+        |--------------------------------------------------------------------------
+        |
+        | How wide the artwork in public/icon-foreground.png is drawn, in dp,
+        | within the 108dp adaptive icon canvas. It is fitted by its own radius,
+        | so this is the diameter of the circle it ends up occupying.
+        |
+        | 52dp puts it at roughly 72% of the launcher's mask, which is where
+        | platform icons sit. 66dp is the documented maximum for content that
+        | must not be clipped; going that far is safe but looks oversized.
+        |
+        | Ignored when public/icon-foreground.png is absent.
+        |
+        */
+        'launcher_foreground_size' => env('NATIVEPHP_ANDROID_LAUNCHER_FOREGROUND_SIZE', 52),
+
+        /*
+        |--------------------------------------------------------------------------
         | Android Theme Colors
         |--------------------------------------------------------------------------
         |
