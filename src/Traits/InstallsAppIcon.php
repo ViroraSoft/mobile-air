@@ -156,10 +156,13 @@ trait InstallsAppIcon
     /**
      * Draw a transparent foreground artwork onto an adaptive-icon canvas.
      *
-     * The artwork is measured by its opaque bounds and scaled to fit, rather
-     * than trusting however it was framed. The target is the 66dp circle
-     * Android documents as safe for key content — not the full 72dp safe zone,
-     * whose corners a circular mask cuts off.
+     * The artwork is measured and scaled to fit rather than trusting however it
+     * was framed. What it has to fit is the 66dp circle Android documents as
+     * safe for key content, so the artwork is measured by the radius of its
+     * furthest opaque pixel — not by its bounding box. Fitting the box instead
+     * only works for artwork whose extremities sit on the axes; anything
+     * reaching into its own corners (a rosette, a diagonal wordmark) then
+     * overflows the mask by up to the box's half-diagonal.
      */
     private function renderAdaptiveForeground(string $src, string $dst, int $size): void
     {
@@ -169,14 +172,14 @@ trait InstallsAppIcon
             return;
         }
 
-        [$left, $top, $right, $bottom] = $this->opaqueBounds($src, $srcImage);
+        [$left, $top, $right, $bottom, $radius] = $this->opaqueBounds($src, $srcImage);
 
         $contentWidth = $right - $left + 1;
         $contentHeight = $bottom - $top + 1;
 
-        // 66dp safe-content circle within the 108dp canvas.
-        $safe = $size * (66 / 108);
-        $scale = $safe / max($contentWidth, $contentHeight);
+        // Radius of the 66dp safe-content circle within the 108dp canvas.
+        $safeRadius = $size * (33 / 108);
+        $scale = $radius > 0 ? $safeRadius / $radius : 1.0;
 
         $drawWidth = (int) round($contentWidth * $scale);
         $drawHeight = (int) round($contentHeight * $scale);
@@ -200,12 +203,14 @@ trait InstallsAppIcon
     }
 
     /**
-     * Bounding box of the non-transparent pixels, as [left, top, right, bottom].
+     * Extent of the non-transparent pixels: [left, top, right, bottom, radius],
+     * where radius is the distance from the box's centre to the furthest opaque
+     * pixel.
      *
      * Scanning a large PNG pixel by pixel is slow enough to be worth doing once
      * per source rather than once per density bucket.
      *
-     * @return array{0:int,1:int,2:int,3:int}
+     * @return array{0:int,1:int,2:int,3:int,4:float}
      */
     private function opaqueBounds(string $cacheKey, \GdImage $image): array
     {
@@ -220,6 +225,7 @@ trait InstallsAppIcon
         $top = $height;
         $right = -1;
         $bottom = -1;
+        $opaque = [];
 
         for ($y = 0; $y < $height; $y++) {
             for ($x = 0; $x < $width; $x++) {
@@ -240,15 +246,33 @@ trait InstallsAppIcon
                 if ($y > $bottom) {
                     $bottom = $y;
                 }
+
+                // Only the outermost pixel of each row can be the furthest one.
+                $opaque[$y] ??= [$x, $x];
+                $opaque[$y][1] = $x;
             }
         }
 
         // Fully transparent artwork: fall back to the whole canvas.
         if ($right < 0) {
-            [$left, $top, $right, $bottom] = [0, 0, $width - 1, $height - 1];
+            return $this->opaqueBoundsCache[$cacheKey] = [0, 0, $width - 1, $height - 1, $width / 2];
         }
 
-        return $this->opaqueBoundsCache[$cacheKey] = [$left, $top, $right, $bottom];
+        $centreX = ($left + $right) / 2;
+        $centreY = ($top + $bottom) / 2;
+        $radius = 0.0;
+
+        foreach ($opaque as $y => [$rowLeft, $rowRight]) {
+            foreach ([$rowLeft, $rowRight] as $x) {
+                $distance = hypot($x - $centreX, $y - $centreY);
+
+                if ($distance > $radius) {
+                    $radius = $distance;
+                }
+            }
+        }
+
+        return $this->opaqueBoundsCache[$cacheKey] = [$left, $top, $right, $bottom, $radius];
     }
 
     private function resizePng(string $src, string $dst, int $width, int $height): void
