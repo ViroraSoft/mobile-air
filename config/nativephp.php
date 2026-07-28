@@ -236,6 +236,25 @@ return [
 
         /*
         |--------------------------------------------------------------------------
+        | Launcher Icon Background
+        |--------------------------------------------------------------------------
+        |
+        | The background layer of the Android adaptive icon. The launcher masks
+        | the background and foreground together into its own shape, so this
+        | should match the icon artwork's own background — otherwise the artwork
+        | sits on a visible plate of this color.
+        |
+        | Pair it with public/icon-foreground.png (the logo alone, on
+        | transparency) for a seamless result. Without that file the foreground
+        | is derived from public/icon.png and carries that icon's background.
+        |
+        | Hex string: #RRGGBB or #AARRGGBB.
+        |
+        */
+        'launcher_background' => env('NATIVEPHP_ANDROID_LAUNCHER_BACKGROUND', '#FFFFFF'),
+
+        /*
+        |--------------------------------------------------------------------------
         | Android Theme Colors
         |--------------------------------------------------------------------------
         |

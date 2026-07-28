@@ -6,6 +6,9 @@ use Illuminate\Support\Facades\File;
 
 trait InstallsAppIcon
 {
+    /** @var array<string, array{0:int,1:int,2:int,3:int}> */
+    private array $opaqueBoundsCache = [];
+
     public function installIosIcon()
     {
         $iconPath = public_path('icon.png');
@@ -84,6 +87,18 @@ trait InstallsAppIcon
 
         $this->logToFile("  Source icon: $iconPath");
 
+        // Adaptive icons are two layers: a background drawable and a foreground
+        // that the launcher masks to its own shape. The foreground is meant to be
+        // the logo alone on transparency — deriving it from icon.png embeds that
+        // icon's own background, which shows up as a square seam inside the mask.
+        // An app can opt out by shipping public/icon-foreground.png instead.
+        $foregroundPath = public_path('icon-foreground.png');
+        $hasForeground = File::exists($foregroundPath);
+
+        if ($hasForeground) {
+            $this->logToFile("  Adaptive foreground: $foregroundPath");
+        }
+
         $resDir = base_path('nativephp/android/app/src/main/res/');
 
         $sizes = [
@@ -122,13 +137,117 @@ trait InstallsAppIcon
                     File::delete($webpPath);
                 }
 
-                $targetSize = ($filename === 'ic_launcher_foreground.png') ? $adaptiveSizes[$folder] : $size;
+                $isForeground = $filename === 'ic_launcher_foreground.png';
+                $targetSize = $isForeground ? $adaptiveSizes[$folder] : $size;
+
+                if ($isForeground && $hasForeground) {
+                    $this->renderAdaptiveForeground($foregroundPath, $dstPath, $targetSize);
+
+                    continue;
+                }
 
                 $this->resizePng($iconPath, $dstPath, $targetSize, $targetSize);
             }
         }
 
         $this->logToFile('  Android icon installed');
+    }
+
+    /**
+     * Draw a transparent foreground artwork onto an adaptive-icon canvas.
+     *
+     * The launcher only guarantees the centre 72dp of the 108dp canvas is
+     * visible, so the artwork is measured by its opaque bounds and scaled to
+     * sit inside that safe zone rather than trusting however it was framed.
+     */
+    private function renderAdaptiveForeground(string $src, string $dst, int $size): void
+    {
+        $srcImage = imagecreatefrompng($src);
+
+        if (! $srcImage) {
+            return;
+        }
+
+        [$left, $top, $right, $bottom] = $this->opaqueBounds($src, $srcImage);
+
+        $contentWidth = $right - $left + 1;
+        $contentHeight = $bottom - $top + 1;
+
+        // 72dp safe zone within the 108dp canvas.
+        $safe = $size * (72 / 108);
+        $scale = $safe / max($contentWidth, $contentHeight);
+
+        $drawWidth = (int) round($contentWidth * $scale);
+        $drawHeight = (int) round($contentHeight * $scale);
+
+        $canvas = imagecreatetruecolor($size, $size);
+        imagealphablending($canvas, false);
+        imagesavealpha($canvas, true);
+        imagefill($canvas, 0, 0, imagecolorallocatealpha($canvas, 0, 0, 0, 127));
+
+        imagecopyresampled(
+            $canvas, $srcImage,
+            (int) round(($size - $drawWidth) / 2), (int) round(($size - $drawHeight) / 2),
+            $left, $top,
+            $drawWidth, $drawHeight,
+            $contentWidth, $contentHeight
+        );
+
+        imagepng($canvas, $dst, 6);
+        imagedestroy($canvas);
+        imagedestroy($srcImage);
+    }
+
+    /**
+     * Bounding box of the non-transparent pixels, as [left, top, right, bottom].
+     *
+     * Scanning a large PNG pixel by pixel is slow enough to be worth doing once
+     * per source rather than once per density bucket.
+     *
+     * @return array{0:int,1:int,2:int,3:int}
+     */
+    private function opaqueBounds(string $cacheKey, \GdImage $image): array
+    {
+        if (isset($this->opaqueBoundsCache[$cacheKey])) {
+            return $this->opaqueBoundsCache[$cacheKey];
+        }
+
+        $width = imagesx($image);
+        $height = imagesy($image);
+
+        $left = $width;
+        $top = $height;
+        $right = -1;
+        $bottom = -1;
+
+        for ($y = 0; $y < $height; $y++) {
+            for ($x = 0; $x < $width; $x++) {
+                // GD alpha: 0 = opaque, 127 = fully transparent.
+                if ((imagecolorat($image, $x, $y) >> 24 & 0x7F) >= 120) {
+                    continue;
+                }
+
+                if ($x < $left) {
+                    $left = $x;
+                }
+                if ($x > $right) {
+                    $right = $x;
+                }
+                if ($y < $top) {
+                    $top = $y;
+                }
+                if ($y > $bottom) {
+                    $bottom = $y;
+                }
+            }
+        }
+
+        // Fully transparent artwork: fall back to the whole canvas.
+        if ($right < 0) {
+            [$left, $top, $right, $bottom] = [0, 0, $width - 1, $height - 1];
+        }
+
+        return $this->opaqueBoundsCache[$cacheKey] = [$left, $top, $right, $bottom];
     }
 
     private function resizePng(string $src, string $dst, int $width, int $height): void
